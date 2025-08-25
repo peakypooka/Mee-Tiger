@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Digital Signage Map (Dark Mode + Traffic)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    html, body {
+      height: 100%;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      background: #111;
+      overflow: hidden;
+    }
+    #clock {
+      position: fixed;
+      top: 24px;
+      right: 32px;
+      left: auto;
+      transform: none;
+      z-index: 9999;
+      font-family: Arial, sans-serif;
+      font-weight: 600;
+      font-size: 3.5rem;
+      color: #111;
+      text-align: center;
+      user-select: none;
+    }
+    .timebox {
+      position: fixed;
+      top: 24px;
+      right: 32px;
+      left: auto;
+      transform: none;
+      font-family: Arial, sans-serif;
+      font-weight: 600;
+      font-size: 3.5rem;
+      color: #111;
+      text-align: center;
+      user-select: none;
+    }
+    #map {
+      width: 100vw;
+      height: 100vh;
+      margin: 0;
+      display: block;
+    }
+
+    .gm-style-iw-close {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <div id="clock" class="timebox"></div>
+  <div id="map"></div>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDs09ZmNVNikQbzbUm0L8sHJVbXVu8XkO0&callback=initMap" async defer></script>
+  <script>
+    // Light mode style with landmarks/POI hidden
+    const lightStyle = [
+      // REMOVE LANDMARKS / POI
+      { featureType: "poi", elementType: "labels", stylers: [ { visibility: "off" } ] },
+      { featureType: "poi", elementType: "geometry", stylers: [ { visibility: "off" } ] },
+      { featureType: "poi.business", stylers: [ { visibility: "off" } ] },
+      { featureType: "poi.government", stylers: [ { visibility: "off" } ] },
+      { featureType: "poi.medical", stylers: [ { visibility: "off" } ] },
+      { featureType: "poi.park", stylers: [ { visibility: "off" } ] },
+      { featureType: "poi.place_of_worship", stylers: [ { visibility: "off" } ] },
+      { featureType: "poi.school", stylers: [ { visibility: "off" } ] },
+      { featureType: "poi.sports_complex", stylers: [ { visibility: "off" } ] }
+    ];
+
+    function initMap() {
+      const myCenter = { lat: 13.747520, lng: 100.527789 };
+      const map = new google.maps.Map(document.getElementById("map"), {
+        center: myCenter,
+        zoom: 15,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+        styles: lightStyle
+      });
+      // Traffic Layer
+      new google.maps.TrafficLayer().setMap(map);
+
+      // Marker at myCenter
+      const marker = new google.maps.Marker({
+        position: myCenter,
+        map: map,
+        title: "Siam Patumwan House"
+      });
+    }
+
+    function updateClock() {
+      const now = new Date();
+      const hours = now.getHours().toString().padStart(2, '0');
+      const minutes = now.getMinutes().toString().padStart(2, '0');
+      const seconds = now.getSeconds().toString().padStart(2, '0');
+      const timeString = `${hours}:${minutes}`;
+      document.getElementById('clock').textContent = timeString;
+    }
+
+    setInterval(updateClock, 1000);
+    updateClock();
+  </script>
+</body>
+</html>

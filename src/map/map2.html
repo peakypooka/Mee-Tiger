@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Digital Signage Map (Traffic + ETA)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    /* === Custom Font: Poppins SemiBold === */
+    @font-face {
+      font-family: 'PoppinsSemiBold';
+      src: url('Poppins-SemiBold.ttf') format('truetype');
+      font-weight: 600;
+      font-style: normal;
+    }
+    html, body {
+      height: 100%;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      background: #111;
+      overflow: hidden;
+    }
+    #clock {
+      position: fixed;
+      top: 24px;
+      right: 32px;
+      z-index: 9999;
+      font-family: 'PoppinsSemiBold', Arial, sans-serif;
+      font-weight: 600;
+      font-size: 3.5rem;
+      color: #111;
+      text-align: center;
+      user-select: none;
+    }
+    #eta-box {
+      position: fixed;
+      top: 24px;
+      left: 32px;
+      z-index: 9999;
+      background: rgba(255,255,255,0.95);
+      padding: 16px 24px;
+      border-radius: 12px;
+      font-size: 1.2rem;
+      color: #111;
+      font-family: 'Arial', Arial, sans-serif;
+      min-width: 250px;
+      box-shadow: 0 2px 16px #0002;
+      line-height: 1.5;
+      user-select: none;
+    }
+    #map {
+      width: 100vw;
+      height: 100vh;
+      margin: 0;
+      display: block;
+    }
+    .gm-style-iw-close {
+      display: none !important;
+    }
+    .gm-ui-hover-effect {
+      display: none !important;
+    }
+
+  </style>
+</head>
+<body>
+  <div id="clock"></div>
+  <div id="eta-box"></div>
+  <div id="map"></div>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDs09ZmNVNikQbzbUm0L8sHJVbXVu8XkO0&callback=initMap" async defer></script>
+  <script>
+    const lightStyle = [
+      { featureType: "poi", elementType: "labels", stylers: [ { visibility: "off" } ] },
+      { featureType: "poi", elementType: "geometry", stylers: [ { visibility: "off" } ] },
+      { featureType: "poi.business", stylers: [ { visibility: "off" } ] },
+      { featureType: "poi.government", stylers: [ { visibility: "off" } ] },
+      { featureType: "poi.medical", stylers: [ { visibility: "off" } ] },
+      { featureType: "poi.park", stylers: [ { visibility: "off" } ] },
+      { featureType: "poi.place_of_worship", stylers: [ { visibility: "off" } ] },
+      { featureType: "poi.school", stylers: [ { visibility: "off" } ] },
+      { featureType: "poi.sports_complex", stylers: [ { visibility: "off" } ] }
+    ];
+
+    const myCenter = { lat: 13.747574248598893, lng: 100.53068922624283 }; 
+    const POIS = [
+        { name: "Bang Na - Samrong", location: { lat: 13.646419, lng: 100.601281 } },
+        { name: "Bang Yai", location: { lat: 13.878561, lng: 100.411195 } },
+        { name: "Chaeng Watthana - Pak Kret", location: { lat: 13.909896, lng: 100.528667 } },
+        { name: "Don Mueang Airport", location: { lat: 13.912590, lng: 100.606796 } },
+        { name: "Future Park Rangsit", location: { lat: 13.994608, lng: 100.616768 } },
+        { name: "Lad Krabang", location: { lat: 13.722317, lng: 100.759669 } },
+        { name: "Min Buri", location: { lat: 13.805915, lng: 100.717756 } },
+        { name: "Phra Ram 2", location: { lat: 13.652500, lng: 100.436800 } },
+        { name: "Sai Mai", location: { lat: 13.924700, lng: 100.633000 } },
+        { name: "Suvarnabhumi Airport", location: { lat: 13.690421, lng: 100.750112 } },
+    ];
+
+    // POI Array sorted by alphabetical order in ascending order loop
+    POIS.sort((a, b) => a.name.localeCompare(b.name));
+  
+
+    function initMap() {
+      const map = new google.maps.Map(document.getElementById("map"), {
+        center: myCenter,
+        zoom: 15,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+        styles: lightStyle
+      });
+
+      // Traffic Layer
+      new google.maps.TrafficLayer().setMap(map);
+
+      // Main building marker with InfoWindow
+      const myCenterMarker = new google.maps.Marker({
+        position: myCenter,
+        map: map,
+        title: "You are here"
+      });
+      const infoWindow = new google.maps.InfoWindow({
+        content: '<div style="font-size:1.15rem;font-weight:bold;padding:2px 8px;">You are here</div>'
+      });
+      infoWindow.open(map, myCenterMarker);
+      myCenterMarker.addListener("click", () => {
+        infoWindow.open(map, myCenterMarker);
+      });
+
+      // Directions & ETA with traffic flow coloring
+      const directionsService = new google.maps.DirectionsService();
+      const etaBox = document.getElementById('eta-box');
+      etaBox.innerHTML = '<div style="text-align:center;font-size:1.2em;"><b>ETA From Here</b></div><br>';
+
+      const results = [];
+      let completed = 0;
+
+      POIS.forEach((poi, i) => {
+        directionsService.route({
+          origin: myCenter,
+          destination: poi.location,
+          travelMode: google.maps.TravelMode.DRIVING,
+          drivingOptions: { departureTime: new Date(), trafficModel: "bestguess" },
+          avoidTolls: true
+        }, (result, status) => {
+          let display;
+          if (status === "OK" && result.routes[0]) {
+            const leg = result.routes[0].legs[0];
+            // === Hybrid traffic severity logic (ratio + absolute delay + segment scan) ===
+            const baselineSec = leg.duration.value; // typical travel time (sec)
+            const trafficSec  = leg.duration_in_traffic
+                                ? leg.duration_in_traffic.value   // current travel time (sec)
+                                : baselineSec;
+            const delaySec    = trafficSec - baselineSec;         // extra seconds because of traffic
+            const ratio       = trafficSec / baselineSec;         // slowdown factor
+
+            /* Step‑level scan: if ANY step is ≥30 % slower AND adds ≥2 min, flag route as heavy */
+            let hasHeavySegment = false;
+            leg.steps.forEach(step => {
+              if (step.duration && step.duration_in_traffic) {
+                const br = step.duration_in_traffic.value / step.duration.value;
+                const ds = step.duration_in_traffic.value - step.duration.value;
+                if (br >= 1.30 && ds >= 120) hasHeavySegment = true;
+              }
+            });
+            // Detect if Google marks any segment as a red‑level traffic jam
+            let hasRedJam = false;
+            leg.steps.forEach(step => {
+              if (step.traffic_speed_entry && Array.isArray(step.traffic_speed_entry)) {
+                step.traffic_speed_entry.forEach(ts => {
+                  const cat = (ts.speed_category || ts.traffic_speed_category || '').toString();
+                  if (/jam|heavy|stop/i.test(cat)) {
+                    hasRedJam = true;      // any red‑level jam forces ETA colour to red
+                  }
+                });
+              }
+            });
+
+            /* Google‑style colour rule
+               green  : ≤10 % slower  AND delay ≤ 5 min
+               orange : 10–30 % slower OR  delay ≤15 min
+               red    : otherwise OR has heavy segment OR has red‑level jam segment
+            */
+            let etaColor;
+            if (hasRedJam || hasHeavySegment) {
+              // Force red if any jam segment or heavy step detected
+              etaColor = "#ea4335";
+            } else if (ratio < 1.10 && delaySec <= 240) {
+              // Good flow: <10 % slower AND ≤4 min delay
+              etaColor = "#34a853";
+            } else if (ratio <= 1.20 && delaySec > 240 && delaySec <= 480) {
+              // Moderate traffic: 10–20 % slower OR delay 4–8 min
+              etaColor = "#ffb600";
+            } else {
+              // Everything else (e.g., >20 % slower OR delay >8 min) → red
+              etaColor = "#ea4335";
+            }
+
+            display = {
+              name: poi.name,
+              html: `<span style="font-weight:600">${poi.name}:</span>
+              <span style="color:${etaColor};font-weight:bold;">
+                ${leg.duration_in_traffic ? leg.duration_in_traffic.text : leg.duration.text}
+              </span>
+              <span style="font-size:1em; color:#222; margin-left:8px;">
+               (${leg.distance.text})
+              </span>
+              <br>`
+            };
+          } else {
+            display = { name: poi.name, html: `<span style="font-weight:600">${poi.name}:</span> -- <br>` };
+          }
+
+          results[i] = display;
+          completed++;
+
+          // When all results have returned
+          if (completed === POIS.length) {
+            results.sort((a, b) => a.name.localeCompare(b.name)); // sort by name again
+            etaBox.innerHTML = '<div style="text-align:center;font-size:1.2em;"><b>ETA From Here</b></div><br>' +
+              results.map(r => r.html).join('');
+          }
+        });
+      });
+    }
+
+    // Digital clock
+    function updateClock() {
+      const now = new Date();
+      const hours = now.getHours().toString().padStart(2, '0');
+      const minutes = now.getMinutes().toString().padStart(2, '0');
+      document.getElementById('clock').textContent = `${hours}:${minutes}`;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+  </script>
+</body>
+</html>
