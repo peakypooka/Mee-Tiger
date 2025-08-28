@@ -5,7 +5,7 @@ from sklearn.datasets import load_iris # Load a sample dataset
 from sklearn.model_selection import train_test_split
 
 #Setting up the CSV file
-csv_files = "d1.csv"
+csv_files = "/Users/peakypooka/Library/VSCode_Backup/Dev_Team/Mee-Tiger/src/train/data/d1.csv"
 print(f"Reading CSV file: {csv_files}", flush=True)
 data = pd.read_csv(csv_files)
 print("CSV file read successfully.", flush=True)
