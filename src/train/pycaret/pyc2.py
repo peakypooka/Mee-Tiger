@@ -33,6 +33,25 @@ data["hour_cos"] = np.cos(2 * np.pi * data["hour"] / 24)
 print(data.head())
 print(len(data))
 
+# --- Pre-setup leakage & correlation screening ---
+# Compute correlations vs target using all current candidate features (except Date)
+feature_candidates = [c for c in data.columns if c not in [tcol, "Date"]]
+corrs_pre = data[feature_candidates + [tcol]].corr()[tcol].drop(labels=[tcol])
+corrs_abs_pre = corrs_pre.abs().sort_values(ascending=False)
+
+# Drop features that are obviously leaky / too correlated, and always drop Plant - Power (kW)
+to_drop_pre = [col for col, corr in corrs_abs_pre.items() if corr > 0.995]
+if "Plant - Power (kW)" in data.columns:
+    to_drop_pre = sorted(set(to_drop_pre + ["Plant - Power (kW)"] + ["Plant - Efficiency (kW/Ton)"]))
+print("Dropping before setup (leakage/high-corr):", to_drop_pre)
+if to_drop_pre:
+    data = data.drop(columns=to_drop_pre)
+
+# Build ignore_features dynamically for safety (in case the column still exists)
+ignore_feats = ["Date"]
+if "Plant - Power (kW)" in data.columns:
+    ignore_feats.append("Plant - Power (kW)")
+
 def run_baseline(sort_metric: str = "MAE"):
     """Run a quick baseline to pick the best model by the chosen metric."""
     best = compare_models(sort=sort_metric)
@@ -63,7 +82,7 @@ s = setup(
     data_split_shuffle=False,
     fold=5,
     fold_strategy="timeseries",
-    ignore_features=["Date"],
+    ignore_features=ignore_feats,
     remove_multicollinearity=True,
     multicollinearity_threshold=0.95,
     normalize=True,
@@ -84,22 +103,13 @@ else:
 final_model = finalize_model(final_candidate)
 print("[Finalized]", final_model)
 
-best = compare_models(include=[final_model], sort='RMSE')
-print("[Re-compare Finalized] Best model by RMSE:", best)
-print(best)
-
 X_cols = get_config('X').columns.tolist()
 print("Features used:\n", X_cols)
-assert tcol not in X_cols, "Target leaked into features!" # Sanity Check
+assert "Plant - Power (kW)" not in X_cols, "Plant - Power (kW) should have been excluded"
+assert tcol not in X_cols, "Target leaked into features!"
 corrs = data[X_cols + [tcol]].corr()[tcol].drop(labels=[tcol])
-corrs_abs = corrs.abs().sort_values(ascending=False)
-print("Top absolute correlations with target:\n", corrs_abs.head(20))  # any feature with |corr| > 0.995 is suspicious
+print("Top absolute correlations with target:\n", corrs.abs().sort_values(ascending=False).head(20))
 print()
-
-# Drop columns with suspiciously high correlation to target
-to_drop = [col for col, corr in corrs_abs.items() if corr > 0.995] + ["Plant - Power (kW)"]
-print("Dropping highly correlated features:", to_drop)
-data = data.drop(columns=to_drop)
 
 # Evaluate on the holdout split and show a quick summary
 holdout_results = predict_model(final_model)
@@ -132,4 +142,3 @@ except TypeError:
 
 # Optional: save the model artifact for reuse
 save_model(final_model, "Plant_Cooling_Load_Model")
-
