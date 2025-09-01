@@ -1,23 +1,25 @@
-<<<<<<< HEAD
-=======
 #TRAIN THE ENTIRE DATASET TO FIND THE BEST 20 PREDICTION MODEL
 #USING PYCARET
 
->>>>>>> 85ac956 (pycaret_dbs)
 import pandas as pd
 import numpy as np
 from pycaret.regression import *
 from sklearn.inspection import permutation_importance
-<<<<<<< HEAD
-=======
 from pathlib import Path
 import matplotlib.pyplot as plt
->>>>>>> 85ac956 (pycaret_dbs)
 
 file_path = "/Users/peakypooka/Library/VSCode_Backup/Dev_Team/Mee-Tiger/src/train/data/chilled_water_loop_1.csv"
 tcol = "Plant - Cooling Load (Ton)"
-USE_OPTUNA = False  # set True to enable Optuna tuning
+test_path = "/Users/peakypooka/Library/VSCode_Backup/Dev_Team/Mee-Tiger/src/train/data/test_data.csv"
+USE_OPTUNA = True
 
+# --- Forecasting configuration ---
+FORECAST_MINUTES = 20   # prediction horizon; change as needed
+DROP_CURRENT_LOOP = True  # drop contemporaneous Loop features (use lags instead)
+ADD_LOOP_LAGS = True      # create lagged/rolling Loop features from the past only
+LAG_MINUTES = [1, 5, 15]
+ROLL_MINUTES = [5, 15]
+ORIG_TCOL = tcol  
 
 # --- Multi-round tuning config ---
 MULTI_TUNE_ROUNDS = 5   # number of consecutive tuning rounds
@@ -35,8 +37,8 @@ def load_data(file_path):
     return df
 
 data = load_data(file_path)
-data[tcol] = pd.to_numeric(data[tcol], errors="coerce")
-data = data.dropna(subset=[tcol, "Date"])
+data[ORIG_TCOL] = pd.to_numeric(data[ORIG_TCOL], errors="coerce")
+data = data.dropna(subset=[ORIG_TCOL, "Date"])
 data["hour"] = data["Date"].dt.hour
 data["dow"] = data["Date"].dt.dayofweek
 data["month"] = data["Date"].dt.month
@@ -49,24 +51,55 @@ data["hour_cos"] = np.cos(2 * np.pi * data["hour"] / 24)
 print(data.head())
 print(len(data))
 
+# --- Forecasting target alignment & lag features ---
+# Estimate sampling step (minutes)
+_step_minutes = int(round(data["Date"].diff().dt.total_seconds().dropna().median() / 60.0))
+if _step_minutes < 1:
+    _step_minutes = 1
+H_STEPS = max(1, FORECAST_MINUTES // _step_minutes)
+print(f"Forecasting horizon: {FORECAST_MINUTES} min (~{H_STEPS} steps at {_step_minutes} min/step)")
+
+# Create future target at t+H from original target
+data["target_t_plus"] = data[ORIG_TCOL].shift(-H_STEPS)
+tcol = "target_t_plus"
+# Drop last H rows without future target
+data = data.dropna(subset=[tcol])
+
+# Build lagged loop features from the past only; drop contemporaneous loop columns if requested
+loop_cols = [c for c in data.columns if "Loop" in c]
+if ADD_LOOP_LAGS:
+    for c in loop_cols:
+        for m in LAG_MINUTES:
+            s = max(1, m // _step_minutes)
+            data[f"{c}_lag{s}"] = data[c].shift(s)
+        for m in ROLL_MINUTES:
+            w = max(2, m // _step_minutes)
+            data[f"{c}_roll{w}"] = data[c].shift(1).rolling(w, min_periods=max(2, w//2)).mean()
+
+if DROP_CURRENT_LOOP:
+    print("Dropping contemporaneous loop features:", loop_cols)
+    data = data.drop(columns=loop_cols, errors="ignore")
+
 # --- Pre-setup leakage & correlation screening ---
 # Compute correlations vs target using all current candidate features (except Date)
 feature_candidates = [c for c in data.columns if c not in [tcol, "Date"]]
 corrs_pre = data[feature_candidates + [tcol]].corr()[tcol].drop(labels=[tcol])
 corrs_abs_pre = corrs_pre.abs().sort_values(ascending=False)
 
-# Drop features that are obviously leaky / too correlated, and always drop Plant - Power (kW)
+# Drop features that are obviously leaky / too correlated; always drop plant KPIs and original target
 to_drop_pre = [col for col, corr in corrs_abs_pre.items() if corr > 0.995]
-if "Plant - Power (kW)" in data.columns:
-    to_drop_pre = sorted(set(to_drop_pre + ["Plant - Power (kW)"] + ["Plant - Efficiency (kW/Ton)"]))
+always_drop = ["Plant - Power (kW)", "Plant - Efficiency (kW/Ton)", ORIG_TCOL]
+to_drop_pre = sorted(set(to_drop_pre + [c for c in always_drop if c in data.columns]))
 print("Dropping before setup (leakage/high-corr):", to_drop_pre)
 if to_drop_pre:
     data = data.drop(columns=to_drop_pre)
 
 # Build ignore_features dynamically for safety (in case the column still exists)
 ignore_feats = ["Date"]
-if "Plant - Power (kW)" in data.columns:
-    ignore_feats.append("Plant - Power (kW)")
+for c in always_drop:
+    if c in data.columns:
+        ignore_feats.append(c)
+print("Ignoring features (passed to setup):", ignore_feats)
 
 def run_baseline(sort_metric: str = "MAE"):
     """Run a quick baseline to pick the best model by the chosen metric."""
@@ -147,12 +180,12 @@ s = setup(
     data=data,
     target=tcol,
     session_id=123,
-    train_size=0.8,
+    train_size=0.8,  # keep an internal holdout
     data_split_shuffle=False,
     fold=5,
     fold_strategy="timeseries",
     ignore_features=ignore_feats,
-    remove_multicollinearity=True,
+    remove_multicollinearity=False,
     multicollinearity_threshold=0.95,
     normalize=True,
     transform_target=True,
@@ -160,6 +193,13 @@ s = setup(
     use_gpu=False,
     n_jobs=-1
 )
+
+# Ensure train/holdout have identical model schema
+_train_cols = get_config('X').columns
+_test_cols = get_config('X_test').columns
+print("[Schema] Train cols:", len(_train_cols), "; Holdout cols:", len(_test_cols))
+print("[Schema] Extra in holdout (should be 0):", sorted(list(set(_test_cols) - set(_train_cols))))
+print("[Schema] Missing in holdout (should be 0):", sorted(list(set(_train_cols) - set(_test_cols))))
 
 # --- Training flow ---
 baseline_model = run_baseline(sort_metric="MAE")
@@ -180,6 +220,10 @@ print("[Finalized]", final_model)
 X_cols = get_config('X').columns.tolist()
 print("Features used:\n", X_cols)
 assert "Plant - Power (kW)" not in X_cols, "Plant - Power (kW) should have been excluded"
+if "Plant - Efficiency (kW/Ton)" in data.columns:
+    assert "Plant - Efficiency (kW/Ton)" not in X_cols, "Plant - Efficiency (kW/Ton) should have been excluded"
+if ORIG_TCOL in data.columns:
+    assert ORIG_TCOL not in X_cols, f"{ORIG_TCOL} should have been excluded"
 assert tcol not in X_cols, "Target leaked into features!"
 corrs = data[X_cols + [tcol]].corr()[tcol].drop(labels=[tcol])
 print("Top absolute correlations with target:\n", corrs.abs().sort_values(ascending=False).head(20))
@@ -190,8 +234,6 @@ holdout_results = predict_model(final_model)
 print("Holdout predictions shape:", holdout_results.shape)
 print(holdout_results.head())
 
-<<<<<<< HEAD
-=======
 # --- Predicted vs Actual (Holdout) ---
 # Align y_true (holdout target) with predictions
 y_holdout = get_config('y_test').reset_index(drop=True)
@@ -316,7 +358,6 @@ try:
 except Exception as e:
     print("[External Test] Skipped due to:", e)
 
->>>>>>> 85ac956 (pycaret_dbs)
 # Residuals and error plots (work for any regressor)
 plot_model(final_model, plot="residuals")
 plot_model(final_model, plot="error")

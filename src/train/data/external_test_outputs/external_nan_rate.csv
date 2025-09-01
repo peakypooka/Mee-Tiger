@@ -1,0 +1,69 @@
+,nan_rate
+load_roll_60m,1.0
+Condenser Water Loop - Water Delta Temperature (˚F)_lag20m,1.0
+load_lag_60m,1.0
+load_lag_30m,1.0
+load_lag_20m,1.0
+Condenser Water Loop - Water Delta Temperature (˚F)_roll60m,1.0
+Condenser Water Loop - Water Delta Temperature (˚F)_roll30m,1.0
+Condenser Water Loop - Water Delta Temperature (˚F)_roll20m,1.0
+Condenser Water Loop - Water Delta Temperature (˚F)_roll15m,1.0
+Condenser Water Loop - Water Delta Temperature (˚F)_roll5m,1.0
+Condenser Water Loop - Water Delta Temperature (˚F)_lag60m,1.0
+Condenser Water Loop - Water Delta Temperature (˚F)_lag30m,1.0
+Condenser Water Loop - Water Delta Temperature (˚F)_lag1m,1.0
+Condenser Water Loop - Water Delta Temperature (˚F)_lag5m,1.0
+Condenser Water Loop - Water Delta Temperature (˚F)_lag15m,1.0
+Chilled Water Loop - Supply Water Temperature (˚F)_lag60m,0.03371913580246914
+Chilled Water Loop - Return Water Temperature (˚F)_lag60m,0.03371913580246914
+Condenser Water Loop - Supply Water Temperature (˚F)_lag60m,0.033680555555555554
+Condenser Water Loop - Return Water Temperature (˚F)_lag60m,0.033680555555555554
+Chilled Water Loop - Supply Water Temperature (˚F)_lag30m,0.03256172839506173
+Chilled Water Loop - Return Water Temperature (˚F)_lag30m,0.03256172839506173
+Condenser Water Loop - Return Water Temperature (˚F)_lag30m,0.03252314814814815
+Condenser Water Loop - Supply Water Temperature (˚F)_lag30m,0.03252314814814815
+Chilled Water Loop - Return Water Temperature (˚F)_lag20m,0.03217592592592593
+Chilled Water Loop - Supply Water Temperature (˚F)_lag20m,0.03217592592592593
+Condenser Water Loop - Supply Water Temperature (˚F)_lag20m,0.032137345679012344
+Condenser Water Loop - Return Water Temperature (˚F)_lag20m,0.032137345679012344
+Chilled Water Loop - Supply Water Temperature (˚F)_lag15m,0.031983024691358025
+Chilled Water Loop - Return Water Temperature (˚F)_lag15m,0.031983024691358025
+Condenser Water Loop - Supply Water Temperature (˚F)_lag15m,0.03194444444444444
+Condenser Water Loop - Return Water Temperature (˚F)_lag15m,0.03194444444444444
+Outdoor Weather Station - Outdoor Dry-Bulb Temperature (˚F),0.03179012345679012
+Outdoor Weather Station - Outdoor Wet-Bulb Temperature (˚F),0.03179012345679012
+Outdoor Weather Station - Humidity (%),0.03179012345679012
+Chilled Water Loop - Return Water Temperature (˚F)_lag5m,0.03159722222222222
+Chilled Water Loop - Supply Water Temperature (˚F)_lag5m,0.03159722222222222
+Condenser Water Loop - Return Water Temperature (˚F)_lag5m,0.031558641975308645
+Condenser Water Loop - Supply Water Temperature (˚F)_lag5m,0.031558641975308645
+Chilled Water Loop - Supply Water Temperature (˚F)_lag1m,0.0314429012345679
+Chilled Water Loop - Return Water Temperature (˚F)_lag1m,0.0314429012345679
+Condenser Water Loop - Supply Water Temperature (˚F)_lag1m,0.03140432098765432
+Condenser Water Loop - Return Water Temperature (˚F)_lag1m,0.03140432098765432
+Chilled Water Loop - Return Water Temperature (˚F)_roll5m,0.02546296296296296
+Chilled Water Loop - Supply Water Temperature (˚F)_roll5m,0.02546296296296296
+Condenser Water Loop - Supply Water Temperature (˚F)_roll5m,0.02515432098765432
+Condenser Water Loop - Return Water Temperature (˚F)_roll5m,0.02515432098765432
+Chilled Water Loop - Return Water Temperature (˚F)_roll15m,0.010455246913580248
+Chilled Water Loop - Supply Water Temperature (˚F)_roll15m,0.010455246913580248
+Condenser Water Loop - Return Water Temperature (˚F)_roll15m,0.009992283950617284
+Condenser Water Loop - Supply Water Temperature (˚F)_roll15m,0.009992283950617284
+Chilled Water Loop - Return Water Temperature (˚F)_roll20m,0.00783179012345679
+Chilled Water Loop - Supply Water Temperature (˚F)_roll20m,0.00783179012345679
+Condenser Water Loop - Return Water Temperature (˚F)_roll20m,0.0072145061728395065
+Condenser Water Loop - Supply Water Temperature (˚F)_roll20m,0.0072145061728395065
+Chilled Water Loop - Return Water Temperature (˚F)_roll30m,0.005131172839506173
+Chilled Water Loop - Supply Water Temperature (˚F)_roll30m,0.005131172839506173
+Condenser Water Loop - Supply Water Temperature (˚F)_roll30m,0.0045138888888888885
+Condenser Water Loop - Return Water Temperature (˚F)_roll30m,0.0045138888888888885
+Condenser Water Loop - Supply Water Temperature (˚F)_roll60m,0.0018132716049382715
+Condenser Water Loop - Return Water Temperature (˚F)_roll60m,0.0018132716049382715
+Chilled Water Loop - Supply Water Temperature (˚F)_roll60m,0.0018132716049382715
+Chilled Water Loop - Return Water Temperature (˚F)_roll60m,0.0018132716049382715
+hour_cos,0.0
+hour_sin,0.0
+is_weekend,0.0
+month,0.0
+dow,0.0
+hour,0.0

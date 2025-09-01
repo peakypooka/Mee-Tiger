@@ -1,0 +1,2 @@
+round,mae,rmse,r2,model
+1,38.078987086441366,84.72065870825679,0.9179324488237421,"LGBMRegressor(n_jobs=-1, random_state=123)"
