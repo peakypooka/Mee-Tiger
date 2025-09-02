@@ -20,11 +20,8 @@ USE_OPTUNA = True
 FORECAST_MINUTES = 20   # prediction horizon; change as needed
 DROP_CURRENT_LOOP = True  # drop contemporaneous Loop features (use lags instead)
 ADD_LOOP_LAGS = True      # create lagged/rolling Loop features from the past only
-LAG_MINUTES = sorted({1, 5, 15, FORECAST_MINUTES, 30, 60})
-ROLL_MINUTES = sorted({5, 15, FORECAST_MINUTES, 30, 60})
-# Target-load lags/rolls (past-only), used to better capture peaks
-TARGET_LAG_MINUTES = sorted({FORECAST_MINUTES, 30, 60})
-TARGET_ROLL_MINUTES = [60]
+LAG_MINUTES = [1, 5, 15]
+ROLL_MINUTES = [5, 15]
 ORIG_TCOL = tcol  
 
 # --- Multi-round tuning config ---
@@ -85,20 +82,6 @@ if ADD_LOOP_LAGS:
             roll = s.shift(freq="1T").rolling(f"{m}T", min_periods=2).mean().reindex(s.index)
             data[f"{c}_roll{m}m"] = roll.values
 
-    # ---- Add target-load lags/rolls (use past only; no leakage) ----
-    try:
-        s_load = data.set_index("Date")[ORIG_TCOL]
-        # time-based lags of the original load
-        for m in TARGET_LAG_MINUTES:
-            lag = s_load.shift(freq=f"{m}T").reindex(s_load.index)
-            data[f"load_lag_{m}m"] = lag.values
-        # rolling means over minutes, computed on a 1-min-lagged series to avoid leakage
-        for m in TARGET_ROLL_MINUTES:
-            roll = s_load.shift(freq="1T").rolling(f"{m}T", min_periods=2).mean().reindex(s_load.index)
-            data[f"load_roll_{m}m"] = roll.values
-    except Exception as _e:
-        print("[Warn] Skipped target-load lags due to:", _e)
-
 if DROP_CURRENT_LOOP:
     print("Dropping contemporaneous loop features:", loop_cols)
     data = data.drop(columns=loop_cols, errors="ignore")
@@ -126,11 +109,7 @@ print("Ignoring features (passed to setup):", ignore_feats)
 
 def run_baseline(sort_metric: str = "MAE"):
     """Run a quick baseline to pick the best model by the chosen metric."""
-    # Prefer tree boosters for short horizons (better peak capture)
-    if FORECAST_MINUTES <= 60:
-        best = compare_models(include=['gbr', 'lightgbm', 'catboost'], sort=sort_metric)
-    else:
-        best = compare_models(sort=sort_metric)
+    best = compare_models(sort=sort_metric)
     print("[Baseline] Best model by", sort_metric, ":", best)
     return best
 
