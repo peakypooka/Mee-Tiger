@@ -208,3 +208,4 @@ __marimo__/
 
 #csv
 src/train/dbs/exported_data.csv
+src/train/data/dbs_office/exported_data.csv
