@@ -22,7 +22,10 @@ DROP_CURRENT_LOOP = True  # drop contemporaneous Loop features (use lags instead
 ADD_LOOP_LAGS = True      # create lagged/rolling Loop features from the past only
 LAG_MINUTES = [1, 5, 15]
 ROLL_MINUTES = [5, 15]
+
 ORIG_TCOL = tcol  
+# --- Robustness config ---
+SAFE_NA_THRESHOLD = 0.95  # features with >=95% NA in external are imputed with training medians
 
 # --- Multi-round tuning config ---
 MULTI_TUNE_ROUNDS = 1   # run a single tuning round
@@ -231,9 +234,14 @@ if "Plant - Efficiency (kW/Ton)" in data.columns:
 if ORIG_TCOL in data.columns:
     assert ORIG_TCOL not in X_cols, f"{ORIG_TCOL} should have been excluded"
 assert tcol not in X_cols, "Target leaked into features!"
+
 corrs = data[X_cols + [tcol]].corr()[tcol].drop(labels=[tcol])
 print("Top absolute correlations with target:\n", corrs.abs().sort_values(ascending=False).head(20))
 print()
+
+# Quick numeric summary on holdout (for visibility)
+mae_h, rmse_h, r2_h = evaluate_on_holdout(final_model)
+print(f"[Holdout] MAE={mae_h:.4f} RMSE={rmse_h:.4f} R2={r2_h:.4f}")
 
 # Evaluate on the holdout split and show a quick summary
 holdout_results = predict_model(final_model)
@@ -336,6 +344,15 @@ try:
         nan_rate = X_test_aligned.isna().mean().sort_values(ascending=False)
         (out_dir / "external_nan_rate.csv").write_text(nan_rate.to_csv(header=["nan_rate"]))
         print("[External Test] Top NA feature rates:\n", nan_rate.head(10))
+
+        # If any feature is almost entirely NA, impute with training medians for stability
+        high_na_cols = nan_rate.index[nan_rate >= SAFE_NA_THRESHOLD].tolist()
+        if high_na_cols:
+            print(f"[External Test] {len(high_na_cols)} features >= {SAFE_NA_THRESHOLD:.2f} NA. Imputing with training medians.")
+            train_medians = get_config('X').median(numeric_only=True)
+            for c in high_na_cols:
+                X_test_aligned[c] = float(train_medians.get(c, 0.0))
+            (out_dir / "external_high_na_cols.txt").write_text("\n".join(high_na_cols))
 
         preds_ext = predict_model(final_model, data=X_test_aligned)
 

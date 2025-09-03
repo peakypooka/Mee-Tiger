@@ -1,0 +1,5 @@
+Condenser Water Loop - Water Delta Temperature (˚F)_roll15m
+Condenser Water Loop - Water Delta Temperature (˚F)_roll5m
+Condenser Water Loop - Water Delta Temperature (˚F)_lag15m
+Condenser Water Loop - Water Delta Temperature (˚F)_lag5m
+Condenser Water Loop - Water Delta Temperature (˚F)_lag1m

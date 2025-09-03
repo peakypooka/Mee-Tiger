@@ -1,0 +1,2 @@
+round,mae,rmse,r2,model
+1,38.64446351243266,82.81680766076488,0.9217026002299975,<catboost.core.CatBoostRegressor object at 0x32d89fee0>
